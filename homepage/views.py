@@ -149,8 +149,8 @@ def set_default_text_and_logo(design):
         rightarm.fill = "#607d8b"
         rightarm.fontStyle = "bold"
         rightarm.fontSize = 50
-        rightarm.left = 50
-        rightarm.top = 120
+        rightarm.left = 46
+        rightarm.top = 124
         rightarm.stroke = ""
         rightarm.strokeWidth = 0
         design.right_arm_text = rightarm
@@ -186,24 +186,24 @@ def set_default_text_and_logo(design):
         lowerback.textvalue = "Department of\nComputer Science"
         lowerback.fontFamily = "arial"
         lowerback.fill = "#ffc107"
-        lowerback.fontStyle = "bold"
+        lowerback.fontStyle = "italic"
         lowerback.fontSize = 15
-        lowerback.left = 150
-        lowerback.top = 190
+        lowerback.left = 151
+        lowerback.top = 256
         lowerback.stroke = ""
         lowerback.strokeWidth = 0
         design.lower_back_text = lowerback
 
     if design.front_logo == None:
         frontlogo = Logo()
-        frontlogo.left = 340
-        frontlogo.top = 180
+        frontlogo.left = 357
+        frontlogo.top = 152
         design.front_logo = frontlogo
 
     if design.back_logo == None:
         backlogo = Logo()
-        backlogo.left = 215
-        backlogo.top = 280
+        backlogo.left = 212
+        backlogo.top = 216
         design.back_logo = backlogo
 
 def update_text_and_logo(text, logo, design):
@@ -915,6 +915,7 @@ def update_comment(request, design_id, comment_id):
     if request.method == 'DELETE':
         comment.delete()
     if request.method == 'PUT':
+        comment.name = request.data['name']
         comment.comment = request.data['comment']
         comment.save()
 

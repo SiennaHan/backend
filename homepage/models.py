@@ -2,6 +2,7 @@ from django.db import models
 from django.db.models import signals
 from django.contrib.auth.models import User
 from .default_logo import DEFAULT_LOGO_BASE64
+from .default_image_url import DEFAULT_IMG_FRONT_URL, DEFAULT_IMG_BACK_URL
 import base64
 
 # BLACK = 'BK'
@@ -34,7 +35,7 @@ class Group(models.Model):
     group_type = models.CharField(
         max_length=2,
         choices=GROUP_TYPE,
-        default=MAJOR,
+        default=CLUB,
     )
     group_name = models.CharField(max_length=50)
     users = models.ManyToManyField('auth.User')
@@ -86,8 +87,8 @@ class Design(models.Model):
     front_logo = models.OneToOneField('Logo', related_name='front_logo', null=True, blank=True, on_delete=models.SET_NULL)
     back_logo = models.OneToOneField('Logo', related_name='back_logo', null=True, blank=True, on_delete=models.SET_NULL)
 
-    front_image_url = models.TextField(blank=True, null=True)
-    back_image_url = models.TextField(blank=True, null=True)
+    front_image_url = models.TextField(default=DEFAULT_IMG_FRONT_URL, blank=True, null=True)
+    back_image_url = models.TextField(default=DEFAULT_IMG_BACK_URL, blank=True, null=True)
 
     def __str__(self):
         return str(self.group)+'_'+str(self.owner)+"_"+str(self.id)
@@ -114,6 +115,11 @@ class Text(models.Model):
         default="#fcfcfc",
     )
     strokeWidth = models.IntegerField(default=0)
+    scaleX = models.IntegerField(default=1)
+    scaleY = models.IntegerField(default=1)
+    width = models.IntegerField(default=0)
+    height = models.IntegerField(default=0)
+
 
 class Profile(models.Model):
     user = models.OneToOneField('auth.User', on_delete=models.CASCADE,primary_key=True)
