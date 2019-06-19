@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.core.files import File
 from django.contrib.auth.models import User
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.http import HttpResponseRedirect,HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import generics, status
@@ -128,7 +128,7 @@ def profile(request, username):
         return Response(status=status.HTTP_400_BAD_REQUEST)
     return Response(status=status.HTTP_403_FORBIDDEN)
 
-def set_default_text_and_logo(design):
+def set_default_text_and_logo(design, logged_in):
     if design.front_chest_text == None:
         frontchest = Text()
         frontchest.textvalue = "S"
@@ -138,8 +138,12 @@ def set_default_text_and_logo(design):
         frontchest.fontSize = 50
         frontchest.left = 250
         frontchest.top = 110
+        frontchest.width = 33.349609375
+        frontchest.height = 56.5
         frontchest.stroke = "#000000"
         frontchest.strokeWidth = 2
+        if logged_in:
+            frontchest.save()
         design.front_chest_text = frontchest
     
     if design.right_arm_text == None:
@@ -151,8 +155,12 @@ def set_default_text_and_logo(design):
         rightarm.fontSize = 50
         rightarm.left = 46
         rightarm.top = 124
+        rightarm.width = 55.615234375
+        rightarm.height = 56.5
         rightarm.stroke = ""
         rightarm.strokeWidth = 0
+        if logged_in:
+            rightarm.save()
         design.right_arm_text = rightarm
 
     if design.upper_back_text == None:
@@ -164,8 +172,12 @@ def set_default_text_and_logo(design):
         upperback.fontSize = 25
         upperback.left = 135
         upperback.top = 125
+        upperback.width = 163.80615234375
+        upperback.height = 28.25
         upperback.stroke = ""
         upperback.strokeWidth = 0
+        if logged_in:
+            upperback.save()
         design.upper_back_text = upperback
 
     if design.middle_back_text == None:
@@ -177,8 +189,12 @@ def set_default_text_and_logo(design):
         middleback.fontSize = 20
         middleback.left = 155
         middleback.top = 155
+        middleback.height = 120.01953125
+        middleback.width = 22.599999999999998
         middleback.stroke = ""
         middleback.strokeWidth = 0
+        if logged_in:
+            middleback.save()
         design.middle_back_text = middleback
 
     if design.lower_back_text == None:
@@ -190,21 +206,32 @@ def set_default_text_and_logo(design):
         lowerback.fontSize = 15
         lowerback.left = 151
         lowerback.top = 256
+        lowerback.width = 131.7041015625
+        lowerback.height = 36.611999999999995
         lowerback.stroke = ""
         lowerback.strokeWidth = 0
+        if logged_in:
+            lowerback.save()
         design.lower_back_text = lowerback
 
     if design.front_logo == None:
         frontlogo = Logo()
         frontlogo.left = 357
         frontlogo.top = 152
+        if logged_in:
+            frontlogo.save()
         design.front_logo = frontlogo
 
     if design.back_logo == None:
         backlogo = Logo()
         backlogo.left = 212
         backlogo.top = 216
+        if logged_in:
+            backlogo.save()
         design.back_logo = backlogo
+    
+    if logged_in:
+        design.save()
 
 def update_text_and_logo(text, logo, design):
     if design.front_chest_text != None:
@@ -400,10 +427,12 @@ def main(request):
                 design = Design()
                 design.owner = request.user
                 design.group = user.user_group
+                design.name = 'new_design_'+str(user.number)
                 design.save()
                 user.recent = design
+                user.number += 1
                 user.save()
-        set_default_text_and_logo(design)
+        set_default_text_and_logo(design, request.user.id != None)
         design_serializer = UserDesignSerializer(design)
         return Response(design_serializer.data)
     
@@ -418,6 +447,7 @@ def main(request):
         design_id=data['id']
         if design_id != user.recent.id:
             return Response(status=status.HTTP_400_BAD_REQUEST)
+        user.recent.name=data['name']
         user.recent.body=data['design']['body']
         user.recent.sleeve=data['design']['sleeve']
         user.recent.button=data['design']['button']
@@ -444,11 +474,13 @@ def main(request):
             design = Design()
             design.owner = request.user
             design.group = user.user_group
+            design.name = 'new_design_'+str(user.number)
             design.save()
             user.recent = design
+            user.number += 1
             user.save()
             
-        set_default_text_and_logo(design)
+        set_default_text_and_logo(design, request.user.id != None)
         design_serializer = UserDesignSerializer(design)
         return Response(design_serializer.data)
 
@@ -502,6 +534,7 @@ def post_design(request, group_id, design_id):
             return Response(status=status.HTTP_400_BAD_REQUEST)        
 
         post_design=Design()
+        post_design.name = design.name
         post_design.owner = request.user
         post_design.group = group
         post_design.body = design.body
@@ -536,7 +569,7 @@ def group_detail(request, group_id):
             return Response(status=status.HTTP_403_FORBIDDEN)
         
         try:
-            designs = Design.objects.all().filter(group=group).order_by('likes').reverse()
+            designs = Design.objects.all().filter(group=group).annotate(likes=Count('who')).order_by('-likes')
         except Design.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
         
@@ -638,9 +671,11 @@ def group_list_all(request):
         group_serializer = GroupSerializer(instance=groups, user=request.user, many=True)
         return Response(group_serializer.data)
 
-@api_view(['GET'])
+@api_view(['GET', 'PUT'])
 @permission_classes((IsAuthenticatedOrNothing,))
 def edit_design(request, design_id):
+    if request.user.id == None:
+        return Response(status=status.HTTP_403_FORBIDDEN)
     try:
         user = Profile.objects.get(user=request.user)
     except Profile.DoesNotExist:
@@ -652,13 +687,22 @@ def edit_design(request, design_id):
         return Response(status=status.HTTP_404_NOT_FOUND)
     if request.user != design.owner:
         return Response(status=status.HTTP_403_FORBIDDEN)
-    if design.group.group_type != 'UR' or request.user not in design.group.master.all():
-        return Response(status=status.HTTP_403_FORBIDDEN)
     
-    user.recent = design
-    user.save()
-    profile_serializer = ProfileSerializer(user)
-    return Response(profile_serializer.data)
+    if request.method == 'GET':
+        if design.group.group_type != 'UR' or request.user not in design.group.master.all():
+            return Response(status=status.HTTP_403_FORBIDDEN)
+        
+        user.recent = design
+        user.save()
+        profile_serializer = ProfileSerializer(user)
+        return Response(profile_serializer.data)
+    
+    if request.method == 'PUT':
+        data = json.loads(request.body.decode("utf-8")) 
+        design.name = data['name']
+        design.save()
+        design_serializer = UserDesignSerializer(design)
+        return Response(design_serializer.data)
 
 @csrf_exempt
 @api_view(['GET', 'PUT', 'DELETE'])
@@ -811,7 +855,6 @@ def update_likes(request, design_id):
             return Response(status=status.HTTP_406_NOT_ACCEPTABLE)
         
         design.who.add(user)
-        design.likes = design.likes + 1
         design.save()
         design_serializer = UserDesignSerializer(design)
         return Response(design_serializer.data)
@@ -837,7 +880,6 @@ def undo_likes(request, design_id):
             return Response(status=status.HTTP_406_NOT_ACCEPTABLE)
         
         design.who.remove(user)
-        design.likes = design.likes - 1
         design.save()
         design_serializer = UserDesignSerializer(design)
         return Response(design_serializer.data)
@@ -942,7 +984,6 @@ def comment_like(request, comment_id):
             return Response(status=status.HTTP_406_NOT_ACCEPTABLE)
         
         comment.who_c.add(user)
-        comment.likes = comment.likes + 1
         comment.save()
         
         c_set = Comment.objects.all().filter(design=comment.design).order_by('created_at').reverse()
@@ -968,8 +1009,21 @@ def comment_unlike(request, comment_id):
             return Response(status=status.HTTP_406_NOT_ACCEPTABLE)
         
         comment.who_c.remove(user)
-        comment.likes = comment.likes - 1
         comment.save()
         
         c_set = Comment.objects.all().filter(design=comment.design).order_by('created_at').reverse()
         return Response(CommentSerializer(c_set, user=request.user, many=True).data)
+
+@api_view(['GET'])
+@permission_classes((IsAuthenticatedOrNothing,))
+def get_profile(request):
+    if request.method == 'GET':
+        if request.user.id == None:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        try:
+            profile = Profile.objects.get(user=request.user)
+        except Profile.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        
+        profile_serializer = ProfileSerializer(profile)
+        return Response(profile_serializer.data)

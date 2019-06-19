@@ -51,13 +51,12 @@ class Comment(models.Model):
     design = models.ForeignKey('Design', on_delete=models.CASCADE)
     comment = models.TextField(default="Good Job!", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    likes = models.IntegerField(default=0)
     who_c = models.ManyToManyField('auth.User', related_name="who_c", blank=True)
 
 class Design(models.Model):
+    name = models.CharField(max_length=50, blank=True, null=True)
     owner = models.ForeignKey('auth.User', on_delete=models.CASCADE)
     group = models.ForeignKey(Group, on_delete=models.CASCADE)
-    likes = models.IntegerField(default=0)
     who = models.ManyToManyField('auth.User', related_name="who", blank=True)
     body = models.CharField(
         max_length=7,
@@ -95,12 +94,12 @@ class Design(models.Model):
 
 class Logo(models.Model):
     src = models.TextField(default=DEFAULT_LOGO_BASE64, blank=True, null=True)
-    width = models.IntegerField(default=571)
-    height = models.IntegerField(default=589)
-    left = models.IntegerField(default=0)
-    top = models.IntegerField(default=0)
-    scaleX = models.IntegerField(default=1)
-    scaleY = models.IntegerField(default=1)
+    width = models.FloatField(default=571)
+    height = models.FloatField(default=589)
+    left = models.FloatField(default=0)
+    top = models.FloatField(default=0)
+    scaleX = models.FloatField(default=1)
+    scaleY = models.FloatField(default=1)
 
 class Text(models.Model):
     textvalue = models.CharField(max_length=50)
@@ -108,21 +107,22 @@ class Text(models.Model):
     fill = models.CharField(max_length=50)
     fontStyle = models.CharField(max_length=50)
     fontSize = models.IntegerField(default=100)
-    left = models.IntegerField(default=0)
-    top = models.IntegerField(default=0)
+    left = models.FloatField(default=0)
+    top = models.FloatField(default=0)
     stroke = models.CharField(
         max_length=7,
         default="#fcfcfc",
     )
     strokeWidth = models.IntegerField(default=0)
-    scaleX = models.IntegerField(default=1)
-    scaleY = models.IntegerField(default=1)
-    width = models.IntegerField(default=0)
-    height = models.IntegerField(default=0)
+    scaleX = models.FloatField(default=1)
+    scaleY = models.FloatField(default=1)
+    width = models.FloatField(default=0)
+    height = models.FloatField(default=0)
 
 
 class Profile(models.Model):
     user = models.OneToOneField('auth.User', on_delete=models.CASCADE,primary_key=True)
+    number = models.IntegerField(default=1)
     user_group = models.OneToOneField(
         Group,
         on_delete=models.CASCADE,
@@ -156,6 +156,7 @@ def create_profile_and_group(sender, instance, created, **kwargs):
         group.save()
         group.master.add(instance)
         group.users.add(instance)
+        group.save()
 
         profile = Profile()
         profile.user=instance

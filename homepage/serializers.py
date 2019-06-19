@@ -43,7 +43,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     user= serializers.ReadOnlyField(source='user.username')
     class Meta:
         model = Profile
-        fields = ('user','recent')
+        fields = ('user','recent','user_group')
 
 class GroupSerializer(serializers.ModelSerializer):
     admin = serializers.SerializerMethodField()
@@ -175,10 +175,11 @@ class UserDesignSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Design
-        fields = ('id', 'group', 'likes', 'design', 'text', 'logo', 'image')
+        fields = ('name', 'id', 'group', 'design', 'text', 'logo', 'image')
 
 class CommentSerializer(serializers.ModelSerializer):
     auth = serializers.SerializerMethodField()
+    likes = serializers.SerializerMethodField()
     liked = serializers.SerializerMethodField()
 
     def __init__(self, instance=None, user=None, data=empty, **kwargs):
@@ -197,6 +198,9 @@ class CommentSerializer(serializers.ModelSerializer):
         else:
             return self.user in obj.design.group.master.all() or self.user == obj.writer
 
+    def get_likes(self, obj):
+        return obj.who_c.all().count()
+    
     def get_liked(self, obj):
         return self.user in obj.who_c.all()
 
@@ -206,6 +210,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
 class GroupDesignSerializer(serializers.ModelSerializer):
     auth = serializers.SerializerMethodField()
+    likes = serializers.SerializerMethodField()
     liked = serializers.SerializerMethodField()
     comments = serializers.SerializerMethodField()
 
@@ -224,6 +229,9 @@ class GroupDesignSerializer(serializers.ModelSerializer):
             return False
         else:
             return self.user in obj.group.master.all() or self.user == obj.owner
+
+    def get_likes(self, obj):
+        return obj.who.all().count()
 
     def get_liked(self, obj):
         return self.user in obj.who.all()
